@@ -1,0 +1,206 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<modification>
+  <code>open4dev_debug_queries</code>
+  <link>http://www.opencart.com/index.php?route=extension/extension/info&amp;extension_id=18773</link>
+  <name>Debug database queries</name>
+  <version>1.1.0</version>
+  <author>open4dev</author>
+  <file path="system/library/db.php" error="log">
+  	<!-- Add a new class that stores the queries -->
+	<operation>
+      <search><![CDATA[class DB {]]></search>
+      <add position="before"><![CDATA[
+
+/** 
+ * If the additional html should be displayed or hidden for the store front and the admin console respectively. 
+ * If you are debugging on a live server you probably want to leave this to false at least for the store front.
+ * Note that when the html is hidden you can still inspect it by using the developer tools of your browser (e.g. change the css attribute from display:none to display:block).
+ * Set to 'true' to display the html, any other value to hide it. 
+ */ 
+define('DEBUG_FRONT_DISPLAY', 'true');
+define('DEBUG_BACK_DISPLAY', 'true');
+
+/** 
+ * If the queries should be formatted by inserting a <br>  before specific keywords. (See DEBUG_FORMAT_KEYWORDS).
+ * Set to 'true' to format, any other value to disable this feature.
+ */ 
+define('DEBUG_FORMAT', 'true');
+
+/** 
+ * If the sql keywords should be decorated with color for readability purposes. (See DEBUG_SQL_KEYWORDS).
+ * Set to 'true' to decorate, any other value to disable this feature.
+ */ 
+define('DEBUG_COLOR_DECORATE', 'true');
+
+/** 
+ * Keywords that will cause the query's text to change line (i.e. a <br> will be inserted before the keyword). This value is ignored if DEBUG_FORMAT is disabled.
+ * Set to a list of keywords separated by the '|' character so the string to be valid regular expression.
+ */ 
+define('DEBUG_FORMAT_KEYWORDS', 'from|order by|where|inner join|left join|right join');
+
+/** 
+ * Keywords that will be decorated with color (i.e. a <span> will wrap each keyword). This value is ignored if DEBUG_COLOR_DECORATE is disabled.
+ * Set to a list of keywords separated by the '|' character so the string to be valid regular expression.
+ */ 
+define('DEBUG_SQL_KEYWORDS', 'select|delete|update|count|as|from|and|order by|or|where|inner join|left join|right join|join|group by|having|on|asc|desc|limit');
+
+      	
+class QueryDebug {
+	private $queries = array();
+	
+    public function add($sql, $duration = 'not_defined') {
+    	$this->queries[] = array('text' => $sql, 'duration' => $duration);
+    }
+    
+    public function clear() {
+    	$this->queries = array();
+    }
+    
+    public function toHtml($shouldClear = TRUE) {
+        $uri = $_SERVER['REQUEST_URI'];
+        $is_admin = substr($uri, 0, 6) == '/admin';
+    
+    	$should_show = ($is_admin && DEBUG_BACK_DISPLAY == 'true') || (!$is_admin && DEBUG_FRONT_DISPLAY == 'true');
+    	$should_format = DEBUG_FORMAT == 'true';
+    	$should_decorate = DEBUG_COLOR_DECORATE == 'true';
+    	
+    	$out = '<style type="text/css">' ."\n";
+    	$out .= ".total { font-weight: bold; margin: 0px 10px 10px 95px; border-bottom: 1px solid #bbbbbb;} " ."\n";
+    	$out .= ".queries { " . ($should_show ? "" : " display:none; ") . " font-family: monospace; white-space: pre-wrap; padding: 0px 15px 0px 0px; margin-top: 35px; background-color: #f5f5f5; } " ."\n";
+    	$out .= ".qrow { white-space: nowrap; width: 100%; margin-bottom: 8px; /*border-top: 1px solid #bbbbbb;*/ } " ."\n";
+		$out .= ".count { float:left; width: 80px; padding: 4px; /*border: 1px solid #bbbbbb; background-color: #f6f6f6;*/ text-align: right; } " ."\n";
+		$out .= ".query { white-space: normal; background-color: #efefef; margin-left: 90px; padding: 4px; border: 1px solid #bbbbbb; } " ."\n";
+		$out .= ".keyword { color:blue; } " ."\n";
+    	$out .= "</style>\n";
+
+		$total_time = 0.0;
+        foreach($this->queries as $q) {
+        	$total_time += $q['duration'];
+        }
+        
+        $out .= '<div class="queries">';
+        $out .= '<div class="total">Queries: ' . count($this->queries) . ', Total time: ' . number_format($total_time * 1000, 3) . ' ms  [<a id="query-sort-time" href="#">By time</a>] [<a id="query-sort-id" href="#">By id</a>]</div>';
+        $count = 1;
+        
+        // add the \b character to each keyword to restrict the search/replace on word boundaries
+        $format_pattern = $should_format ? "\b" . str_replace("|", "\b|\b", DEBUG_FORMAT_KEYWORDS) . "\b" : "";
+        $decorate_pattern = $should_decorate ? "\b" . str_replace("|", "\b|\b", DEBUG_SQL_KEYWORDS) . "\b" : "";
+        
+        foreach($this->queries as $q) {
+        	$sql = $q['text'];
+        	
+        	if ($should_format) {
+        		$sql = preg_replace('/(' . $format_pattern . ')/i', '<br>$1', $sql);
+        	}
+        	if ($should_decorate) {
+        		$sql = preg_replace('/(' . $decorate_pattern . ')/i', '<span class="keyword">$1</span>', $sql);
+        	}
+        	
+            $out .= '<div class="qrow"><div id= "c' .$count. '" class="count">' . $count . ' <strong>(' . number_format($q['duration'] * 1000, 3) . ')</strong> ' . '</div> <div id="q' .$count. '" class="query">' . $sql . '</div></div>';
+            $count++;
+        }
+        $out .= '</div>' . "\n";
+        
+        $out .= ' <script type="text/javascript">' ."\n";
+        $out .= '$("#query-sort-time").click(function(e) {' ."\n"; 
+        $out .= "     e.stopPropagation(); \n";
+        $out .= "     var sorted = $('.qrow').sort( function(a, b) { \n";
+        $out .= "         var t1 = $(a).find('.count strong').prop('innerHTML'); \n";
+        $out .= "         var t2 = $(b).find('.count strong').prop('innerHTML'); \n";
+        $out .= "         t1 = t1.replace(/\(|\)/g, '') ;  \n";
+        $out .= "         t2 = t2.replace(/\(|\)/g, '') ;  \n";
+        $out .= "         t1 = parseFloat(t1) || 0.0;  \n";
+        $out .= "         t2 = parseFloat(t2) || 0.0;  \n";
+        $out .= "         var d = t2 - t1; \n";
+        $out .= "         return d;\n";
+        $out .= "     }); \n";
+        $out .= '     $(".queries.qrow").remove(); ' . "\n";
+        $out .= '     $(".queries").append(sorted); ' . "\n";
+        $out .= "     return false; \n";
+        $out .= "}); \n";
+        
+        $out .= '$("#query-sort-id").click(function(e) {' ."\n"; 
+        $out .= "     e.stopPropagation(); \n";
+        $out .= "     var sorted = $('.qrow').sort( function(a, b) { \n";
+        $out .= "         var t1 = $(a).find('.count').prop('id').replace('c', '') || 0; \n";
+        $out .= "         var t2 = $(b).find('.count').prop('id').replace('c', '') || 0; \n";
+        $out .= "         var d = t1 - t2; \n";
+        $out .= "         return d;\n";
+        $out .= "     }); \n";
+        $out .= '     $(".queries.qrow").remove(); ' . "\n";
+        $out .= '     $(".queries").append(sorted); ' . "\n";
+        $out .= "     return false; \n";
+        $out .= "}); \n";
+        
+        $out .= "</script>";
+        
+        return $out;
+    }
+}
+      ]]></add>
+    </operation>
+
+	<!-- Add a new member of the QueryDebug class in the DB class -->
+    <operation>
+      <search><![CDATA[class DB {]]></search>
+      <add position="after"><![CDATA[	public $queryDebug; ]]></add>
+    </operation>
+    
+    <!-- initialize the new member -->
+	<operation>
+      <search><![CDATA[public function __construct]]></search>
+      <add position="after"><![CDATA[		$this->queryDebug = new QueryDebug(); ]]></add>
+    </operation>
+
+	<!-- Wrap the query operation to count the time took and add it to our class  (< 2.2.0.0)-->
+    <operation>
+      <ignoreif>$this->adaptor->query</ignoreif>
+      <search><![CDATA[return $this->db->query($sql);]]></search>
+      <add position="replace"><![CDATA[
+      	$time_start = microtime(true);
+		$result = $this->db->query($sql);
+		$time_end = microtime(true);
+		$this->queryDebug->add($sql, ($time_end - $time_start)); 
+		return $result;
+	  ]]></add>
+    </operation>
+
+	<!-- Wrap the query operation to count the time took and add it to our class  (>= 2.2.0.0)-->
+    <operation>
+      <ignoreif>$this->db->query</ignoreif>
+      <search><![CDATA[return $this->adaptor->query($sql, $params);]]></search>
+      <add position="replace"><![CDATA[
+      	$time_start = microtime(true);
+		$result = $this->adaptor->query($sql, $params);
+		$time_end = microtime(true);
+		$this->queryDebug->add($sql, ($time_end - $time_start)); 
+		return $result;
+	  ]]></add>
+    </operation>
+  </file>
+  
+  
+  <file path="system/engine/front.php" error="log">
+  	<!-- Inject new html that shows the queries at the end of html responses -->
+    <operation>
+      <search><![CDATA[$action = $this->execute($action);]]></search>
+      <add position="replace" offset="1"><![CDATA[
+            $action = $this->execute($action);
+        }
+        $response = $this->registry->get('response');
+        $db = $this->registry->get('db');
+        if ( property_exists($db, 'queryDebug') ) {
+        	$out = $response->getOutput();
+        	
+        	// we inject the extra html only in html responses 
+        	$pos = strpos($out, '</body></html>');
+	        if ($pos > 0) {
+	            $debug = $db->queryDebug->toHtml();
+	            $out = substr_replace($out, $debug . '</body></html>', $pos);
+	            $response->setOutput($out);
+	        }
+	    }
+            ]]></add>
+    </operation>
+  </file>
+</modification>
