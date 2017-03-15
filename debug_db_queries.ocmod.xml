@@ -48,8 +48,8 @@ define('DEBUG_SQL_KEYWORDS', 'select|delete|update|count|as|from|and|order by|or
 class QueryDebug {
 	private $queries = array();
 	
-    public function add($sql, $duration = 'not_defined') {
-    	$this->queries[] = array('text' => $sql, 'duration' => $duration);
+    public function add($sql, $duration = 'not_defined',$backtrace = array()) {
+    	$this->queries[] = array('text' => $sql, 'duration' => $duration, 'backtrace' => $backtrace);
     }
     
     public function clear() {
@@ -69,7 +69,7 @@ class QueryDebug {
     	$out .= ".queries { " . ($should_show ? "" : " display:none; ") . " font-family: monospace; white-space: pre-wrap; padding: 0px 15px 0px 0px; margin-top: 35px; background-color: #f5f5f5; } " ."\n";
     	$out .= ".qrow { white-space: nowrap; width: 100%; margin-bottom: 8px; /*border-top: 1px solid #bbbbbb;*/ } " ."\n";
 		$out .= ".count { float:left; width: 80px; padding: 4px; /*border: 1px solid #bbbbbb; background-color: #f6f6f6;*/ text-align: right; } " ."\n";
-		$out .= ".query { white-space: normal; background-color: #efefef; margin-left: 90px; padding: 4px; border: 1px solid #bbbbbb; } " ."\n";
+		$out .= ".query,.line  { white-space: normal; background-color: #efefef; margin-left: 90px; padding: 4px; border: 1px solid #bbbbbb; } " ."\n";
 		$out .= ".keyword { color:blue; } " ."\n";
     	$out .= "</style>\n";
 
@@ -79,7 +79,7 @@ class QueryDebug {
         }
         
         $out .= '<div class="queries">';
-        $out .= '<div class="total">Queries: ' . count($this->queries) . ', Total time: ' . number_format($total_time * 1000, 3) . ' ms  [<a id="query-sort-time" href="#">By time</a>] [<a id="query-sort-id" href="#">By id</a>]</div>';
+        $out .= '<div class="total">Queries: ' . count($this->queries) . ', Total time: ' . number_format($total_time * 1000, 3) . ' ms  [<a id="query-sort-time" href="#">By time</a>] [<a id="query-sort-id" href="#">By id</a>] [<a id="query-sort-line" href="#">By line</a>]</div>';
         $count = 1;
         
         // add the \b character to each keyword to restrict the search/replace on word boundaries
@@ -96,7 +96,7 @@ class QueryDebug {
         		$sql = preg_replace('/(' . $decorate_pattern . ')/i', '<span class="keyword">$1</span>', $sql);
         	}
         	
-            $out .= '<div class="qrow"><div id= "c' .$count. '" class="count">' . $count . ' <strong>(' . number_format($q['duration'] * 1000, 3) . ')</strong> ' . '</div> <div id="q' .$count. '" class="query">' . $sql . '</div></div>';
+            $out .= '<div class="qrow"><div id= "c' .$count. '" class="count">' . $count . ' <strong>(' . number_format($q['duration'] * 1000, 3) . ')</strong> ' . '</div> <div id="q' .$count. '" class="query">' . $sql . '</div><div id="l' .$count. '" class="line">'.$q['backtrace'][0]['file'].':'.$q['backtrace'][0]['line'].'</div></div>';
             $count++;
         }
         $out .= '</div>' . "\n";
@@ -125,6 +125,20 @@ class QueryDebug {
         $out .= "         var t1 = $(a).find('.count').prop('id').replace('c', '') || 0; \n";
         $out .= "         var t2 = $(b).find('.count').prop('id').replace('c', '') || 0; \n";
         $out .= "         var d = t1 - t2; \n";
+        $out .= "         return d;\n";
+        $out .= "     }); \n";
+        $out .= '     $(".queries.qrow").remove(); ' . "\n";
+        $out .= '     $(".queries").append(sorted); ' . "\n";
+        $out .= "     return false; \n";
+        $out .= "}); \n";
+
+        $out .= '$("#query-sort-line").click(function(e) {' ."\n"; 
+        $out .= "     e.stopPropagation(); \n";
+        $out .= "     var sorted = $('.qrow').sort( function(a, b) { \n";
+        $out .= "         var t1 = $(a).find('.line').prop('innerHTML');\n";
+        $out .= "         var t2 = $(b).find('.line').prop('innerHTML');\n";
+
+        $out .= "         var d = t2.localeCompare(t1);\n";
         $out .= "         return d;\n";
         $out .= "     }); \n";
         $out .= '     $(".queries.qrow").remove(); ' . "\n";
@@ -160,7 +174,7 @@ class QueryDebug {
       	$time_start = microtime(true);
 		$result = $this->db->query($sql);
 		$time_end = microtime(true);
-		$this->queryDebug->add($sql, ($time_end - $time_start)); 
+		$this->queryDebug->add($sql, ($time_end - $time_start),debug_backtrace()); 
 		return $result;
 	  ]]></add>
     </operation>
@@ -173,7 +187,7 @@ class QueryDebug {
       	$time_start = microtime(true);
 		$result = $this->adaptor->query($sql, $params);
 		$time_end = microtime(true);
-		$this->queryDebug->add($sql, ($time_end - $time_start)); 
+		$this->queryDebug->add($sql, ($time_end - $time_start),debug_backtrace()); 
 		return $result;
 	  ]]></add>
     </operation>
