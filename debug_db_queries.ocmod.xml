@@ -42,7 +42,7 @@ define('DEBUG_FORMAT_KEYWORDS', 'from|order by|where|inner join|left join|right 
  * Keywords that will be decorated with color (i.e. a <span> will wrap each keyword). This value is ignored if DEBUG_COLOR_DECORATE is disabled.
  * Set to a list of keywords separated by the '|' character so the string to be valid regular expression.
  */ 
-define('DEBUG_SQL_KEYWORDS', 'select|delete|update|count|as|from|and|order by|or|where|inner join|left join|right join|join|group by|having|on|asc|desc|limit');
+define('DEBUG_SQL_KEYWORDS', 'select|delete|update|count|as|from|and|order by|or|where|replace into|set|inner join|left join|right join|join|group by|having|on|asc|desc|limit');
 
       	
 class QueryDebug {
