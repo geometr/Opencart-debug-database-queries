@@ -65,7 +65,7 @@ class QueryDebug {
     	$should_decorate = DEBUG_COLOR_DECORATE == 'true';
     	
     	$out = '<style type="text/css">' ."\n";
-    	$out .= ".total { font-weight: bold; margin: 0px 10px 10px 95px; border-bottom: 1px solid #bbbbbb;} " ."\n";
+    	$out .= ".total,.memory { font-weight: bold; margin: 0px 10px 10px 95px; border-bottom: 1px solid #bbbbbb;} " ."\n";
     	$out .= ".queries { " . ($should_show ? "" : " display:none; ") . " font-family: monospace; white-space: pre-wrap; padding: 0px 15px 0px 0px; margin-top: 35px; background-color: #f5f5f5; } " ."\n";
     	$out .= ".qrow { white-space: nowrap; width: 100%; margin-bottom: 8px; /*border-top: 1px solid #bbbbbb;*/ } " ."\n";
 		$out .= ".count { float:left; width: 80px; padding: 4px; /*border: 1px solid #bbbbbb; background-color: #f6f6f6;*/ text-align: right; } " ."\n";
@@ -79,6 +79,7 @@ class QueryDebug {
         }
         
         $out .= '<div class="queries">';
+        $out .= '<div class="memory">Total memory used: '.round(memory_get_peak_usage()/1024/1024,2).' MB</div>';
         $out .= '<div class="total">Queries: ' . count($this->queries) . ', Total time: ' . number_format($total_time * 1000, 3) . ' ms  [<a id="query-sort-time" href="#">By time</a>] [<a id="query-sort-id" href="#">By id</a>] [<a id="query-sort-line" href="#">By line</a>]</div>';
         $count = 1;
         
@@ -137,7 +138,6 @@ class QueryDebug {
         $out .= "     var sorted = $('.qrow').sort( function(a, b) { \n";
         $out .= "         var t1 = $(a).find('.line').prop('innerHTML');\n";
         $out .= "         var t2 = $(b).find('.line').prop('innerHTML');\n";
-
         $out .= "         var d = t2.localeCompare(t1);\n";
         $out .= "         return d;\n";
         $out .= "     }); \n";
@@ -192,8 +192,7 @@ class QueryDebug {
 	  ]]></add>
     </operation>
   </file>
-  
-  
+
   <file path="system/engine/front.php" error="log">
   	<!-- Inject new html that shows the queries at the end of html responses -->
     <operation>
