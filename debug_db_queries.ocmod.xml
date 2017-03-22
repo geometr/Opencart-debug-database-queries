@@ -136,11 +136,20 @@ class QueryDebug {
         $out .= '$("#query-sort-line").click(function(e) {' ."\n"; 
         $out .= "     e.stopPropagation(); \n";
         $out .= "     var sorted = $('.qrow').sort( function(a, b) { \n";
-        $out .= "         var t1 = $(a).find('.line').prop('innerHTML');\n";
+        $out .= "         var d = 0;\n";	
+	$out .= "	  var t1 = $(a).find('.line').prop('innerHTML');\n";
+	$out .= "         var file1 = t1.slice(0,t1.lastIndexOf(':'))\n";
+	$out .= "         var file1Line = t1.slice(t1.lastIndexOf(':'))\n";
         $out .= "         var t2 = $(b).find('.line').prop('innerHTML');\n";
-        $out .= "         var d = t2.localeCompare(t1);\n";
+	$out .= "	  var file2 = t2.slice(0,t2.lastIndexOf(':'))\n";
+	$out .= "         var file2Line = t2.slice(t2.lastIndexOf(':'));\n";  
+        $out .= "         d = file1.localeCompare(file2);\n";	
+	$out .= "         if (d==0){\n";
+	$out .= "             d = file1Line.localeCompare(file2Line);\n";
+	$out .= "	  	  };";       
         $out .= "         return d;\n";
         $out .= "     }); \n";
+        
         $out .= '     $(".queries.qrow").remove(); ' . "\n";
         $out .= '     $(".queries").append(sorted); ' . "\n";
         $out .= "     return false; \n";
