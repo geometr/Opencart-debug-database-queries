@@ -151,12 +151,12 @@ class QueryDebug {
         $out .= "             if (d==0){\n";
         $out .= "                 d = t1id - t2id;\n";
         $out .= "             };\n";
-        $out .= "	  	  };\n";       
+        $out .= "	  	  };\n";
         $out .= "         return d;\n";
         $out .= "     });\n";
         
         $out .= '     $(".queries.qrow").remove(); ' . "\n";
-        $out .= '     $(".queries").append(sorted); ' . "\n";            
+        $out .= '     $(".queries").append(sorted); ' . "\n";
         $out .= "     return false;\n";
         $out .= "}); \n";
         
