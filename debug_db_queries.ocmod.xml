@@ -151,7 +151,7 @@ class QueryDebug {
         $out .= "     }); \n";
         
         $out .= '     $(".queries.qrow").remove(); ' . "\n";
-        $out .= '     $(".queries").append(sorted); ' . "\n";            
+        $out .= '     $(".queries").append(sorted); ' . "\n";
         $out .= "     return false; \n";
         $out .= "}); \n";
         
